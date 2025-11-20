@@ -11,7 +11,7 @@ from xlutils.copy import copy
 # Page Config
 st.set_page_config(page_title="Sami PDF to XLS", layout="centered")
 
-st.title("🚛 PDF to XLS Converter (Exact Format Fix)")
+st.title("🚛 PDF to XLS Converter (All Text Format)")
 
 # --- 1. User Inputs ---
 direction_choice = st.radio("İşlem Türü:", ('Çıkış', 'Giriş'))
@@ -21,7 +21,7 @@ belge_no_input = st.text_input("Beyanname No (Sadece Çıkış için):")
 # Logic for inputs
 if direction_choice == 'Çıkış':
     yon = 'Ç'
-    belge_tur = 3  # Integer
+    belge_tur = 3  # We will convert this to string "3" later
     belge_no = belge_no_input
 else:
     yon = 'G'
@@ -69,16 +69,6 @@ if st.button("Dönüştür ve İndir"):
 
             date_time['date'] = date_time['date'].astype(str).apply(lambda x: x if '/' in x else x.replace('.', '/'))
 
-            # Column Indices for Reference:
-            # 0: YÖN
-            # 1: BELGE_TÜRÜ
-            # 2: BELGE_NO
-            # 3: PLAKA
-            # 4: DORSE1
-            # 5: DORSE2
-            # 6: date
-            # 7: time
-            
             df_output.insert(0, 'YÖN', yon)
             df_output.insert(1, 'BELGE_TÜRÜ', belge_tur)
             df_output.insert(2, 'BELGE_NO', belge_no)
@@ -88,39 +78,38 @@ if st.button("Dönüştür ve İndir"):
             df_output.insert(7, 'time', date_time['time'])
             
             # --- 3. Template Handling ---
-            st.info("Şablon indiriliyor ve formatlanıyor...")
+            st.info("Şablon indiriliyor ve 'Text' formatına dönüştürülüyor...")
             
             template_url = 'http://www.mavi.web.tr/ygms/Arac_Giris_Cikis_Aktarim_Sablon.xls'
             response = requests.get(template_url)
             response.raise_for_status()
             
+            # Open with formatting_info=True to keep Header styles
             rb = xlrd.open_workbook(file_contents=response.content, formatting_info=True)
             wb = copy(rb)
             sheet = wb.get_sheet(0) 
 
-            # Define Text Style (forces cell to be treated as Text)
+            # Define Text Style
+            # This tells Excel: "Treat this content as Text (@)"
+            # This results in Left Alignment for numbers and ignores numeric formatting.
             text_style = xlwt.XFStyle()
             text_style.num_format_str = '@' 
             
-            # Data values
             data_values = df_output.values.tolist()
-            start_row = 1 # Row 2 in Excel
+            start_row = 1 # Row 2 (Data starts here)
             
             for r_idx, row_data in enumerate(data_values):
                 for c_idx, cell_value in enumerate(row_data):
                     
-                    # --- SELECTIVE FORMATTING ---
-                    # Column 1 (BELGE_TÜRÜ) matches the working file only if it is a Number.
-                    # All other columns (Plaka, Belge No, Date) are safer as Text.
-                    
-                    if c_idx == 1:
-                        # WRITE AS NUMBER (General Style)
-                        # Do not apply text_style here.
-                        sheet.write(start_row + r_idx, c_idx, cell_value)
+                    # Convert everything to string first to ensure it writes as "3" not 3.0
+                    # If cell_value is None or NaN, handle gracefully
+                    if pd.isna(cell_value):
+                         val_to_write = ""
                     else:
-                        # WRITE AS TEXT (Text Style)
-                        # Force conversion to string and apply '@' format
-                        sheet.write(start_row + r_idx, c_idx, str(cell_value), text_style)
+                         val_to_write = str(cell_value)
+
+                    # Apply the Text Style to EVERY data cell
+                    sheet.write(start_row + r_idx, c_idx, val_to_write, text_style)
 
             # --- 4. Save and Download ---
             output_buffer = io.BytesIO()
@@ -129,7 +118,7 @@ if st.button("Dönüştür ve İndir"):
             
             file_name = f"Sami-{datetime.datetime.today().strftime('%Y-%m-%d-%H-%M-%S')}.xls"
             
-            st.success("Dosya Hazır! Format düzeltildi.")
+            st.success("Dosya Hazır!")
             st.download_button(
                 label="📥 Oluşturulan .xls Dosyasını İndir",
                 data=output_buffer,
