@@ -11,7 +11,7 @@ from xlutils.copy import copy
 # Page Config
 st.set_page_config(page_title="Sami PDF to XLS", layout="centered")
 
-st.title("🚛 PDF to XLS Converter (Text Format Fixed)")
+st.title("🚛 🚛 🚛 Sami Plaka 🚛 🚛 🚛")
 
 # --- 1. User Inputs ---
 direction_choice = st.radio("İşlem Türü:", ('Çıkış', 'Giriş'))
@@ -126,3 +126,4 @@ if st.button("Dönüştür ve İndir"):
         except Exception as e:
             st.error(f"Bir hata oluştu: {e}")
             st.exception(e)
+
